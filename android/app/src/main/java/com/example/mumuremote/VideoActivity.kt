@@ -3,8 +3,12 @@ package com.example.mumuremote
 import android.app.AlertDialog
 import android.graphics.BitmapFactory
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.MotionEvent
 import android.view.View
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -37,6 +41,10 @@ class VideoActivity : AppCompatActivity() {
     private var controlSocket: DatagramSocket? = null
     private val controlExecutor = Executors.newSingleThreadExecutor()
     private var edgeDownX = 0f
+    private val uiHandler = Handler(Looper.getMainLooper())
+    private val hideStatusRunnable = Runnable {
+        statusText.visibility = View.GONE
+    }
 
     data class VideoHeader(
         val sessionId: Int,
@@ -66,7 +74,8 @@ class VideoActivity : AppCompatActivity() {
         controlPort = intent.getIntExtra("controlPort", controlPort)
 
         controlSocket = DatagramSocket()
-        statusText.text = "连接 ${host}，视频端口 ${videoPort}，控制端口 ${controlPort}"
+        enterImmersiveMode()
+        statusText.visibility = View.GONE
 
         setupSideNav()
         setupTouchForwarding()
@@ -134,6 +143,34 @@ class VideoActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun enterImmersiveMode() {
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            window.setDecorFitsSystemWindows(false)
+            window.insetsController?.let { controller ->
+                controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                controller.systemBarsBehavior =
+                    WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = (
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_FULLSCREEN
+                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                )
+        }
+    }
+
+    private fun showTransientStatus(message: String) {
+        statusText.text = message
+        statusText.visibility = View.VISIBLE
+        uiHandler.removeCallbacks(hideStatusRunnable)
+        uiHandler.postDelayed(hideStatusRunnable, 1500)
+    }
+
     private fun setupBackIntercept() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -197,7 +234,7 @@ class VideoActivity : AppCompatActivity() {
                                 if (bitmap != null) {
                                     runOnUiThread {
                                         imageView.setImageBitmap(bitmap)
-                                        statusText.text = "视频中 帧=${header.frameIndex} 尺寸=${bitmap.width}x${bitmap.height}"
+                                        statusText.visibility = View.GONE
                                     }
                                 }
                             }
@@ -210,7 +247,7 @@ class VideoActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    statusText.text = "视频接收异常: ${e.message}"
+                    showTransientStatus("视频接收异常: ${e.message}")
                 }
             } finally {
                 videoSocket?.close()
@@ -276,7 +313,7 @@ class VideoActivity : AppCompatActivity() {
     private fun sendSetting(resolution: String, fps: Int) {
         val payload = "{\"type\":\"setting\",\"resolution\":\"$resolution\",\"fps\":$fps}"
         sendControlPacket(payload)
-        statusText.text = "设置已发送: $resolution @ $fps"
+        showTransientStatus("设置已发送: $resolution @ $fps")
     }
 
     private fun sendControlPacket(payload: String) {
@@ -308,7 +345,15 @@ class VideoActivity : AppCompatActivity() {
         }
         controlSocket?.close()
         controlExecutor.shutdownNow()
+        uiHandler.removeCallbacks(hideStatusRunnable)
         super.onDestroy()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            enterImmersiveMode()
+        }
     }
 
     companion object {
