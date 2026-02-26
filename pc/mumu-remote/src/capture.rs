@@ -3,7 +3,7 @@ use windows::Win32::Graphics::Gdi::{
     BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC, GetDIBits,
     ReleaseDC, SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, SRCCOPY,
 };
-use windows::Win32::UI::WindowsAndMessaging::GetClientRect;
+use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
 
 #[derive(Debug)]
 pub struct Frame {
@@ -23,43 +23,51 @@ pub fn capture_window(hwnd: HWND) -> CaptureResult<Frame> {
     }
     unsafe {
         let mut rect = RECT::default();
-        if GetClientRect(hwnd, &mut rect).is_err() {
+        if GetWindowRect(hwnd, &mut rect).is_err() {
             return Err(CaptureError);
         }
+
+        let src_x = rect.left;
+        let src_y = rect.top;
         let width = rect.right - rect.left;
         let height = rect.bottom - rect.top;
         if width <= 0 || height <= 0 {
             return Err(CaptureError);
         }
 
-        let hdc_window = GetDC(hwnd);
-        if hdc_window.0.is_null() {
+        let desktop = HWND(std::ptr::null_mut());
+        let hdc_screen = GetDC(desktop);
+        if hdc_screen.0.is_null() {
             return Err(CaptureError);
         }
-        let hdc_mem = CreateCompatibleDC(hdc_window);
+        let hdc_mem = CreateCompatibleDC(hdc_screen);
         if hdc_mem.0.is_null() {
-            ReleaseDC(hwnd, hdc_window);
+            ReleaseDC(desktop, hdc_screen);
             return Err(CaptureError);
         }
-        let hbmp = CreateCompatibleBitmap(hdc_window, width, height);
+        let hbmp = CreateCompatibleBitmap(hdc_screen, width, height);
         if hbmp.0.is_null() {
             let _ = DeleteDC(hdc_mem);
-            let _ = ReleaseDC(hwnd, hdc_window);
+            let _ = ReleaseDC(desktop, hdc_screen);
             return Err(CaptureError);
         }
         let old_obj = SelectObject(hdc_mem, hbmp);
         if old_obj.0.is_null() {
             let _ = DeleteObject(hbmp);
             let _ = DeleteDC(hdc_mem);
-            let _ = ReleaseDC(hwnd, hdc_window);
+            let _ = ReleaseDC(desktop, hdc_screen);
             return Err(CaptureError);
         }
 
-        if BitBlt(hdc_mem, 0, 0, width, height, hdc_window, 0, 0, SRCCOPY).is_err() {
+        if BitBlt(
+            hdc_mem, 0, 0, width, height, hdc_screen, src_x, src_y, SRCCOPY,
+        )
+        .is_err()
+        {
             SelectObject(hdc_mem, old_obj);
             let _ = DeleteObject(hbmp);
             let _ = DeleteDC(hdc_mem);
-            let _ = ReleaseDC(hwnd, hdc_window);
+            let _ = ReleaseDC(desktop, hdc_screen);
             return Err(CaptureError);
         }
 
@@ -91,7 +99,7 @@ pub fn capture_window(hwnd: HWND) -> CaptureResult<Frame> {
         SelectObject(hdc_mem, old_obj);
         let _ = DeleteObject(hbmp);
         let _ = DeleteDC(hdc_mem);
-        let _ = ReleaseDC(hwnd, hdc_window);
+        let _ = ReleaseDC(desktop, hdc_screen);
 
         if scan_lines == 0 {
             return Err(CaptureError);
