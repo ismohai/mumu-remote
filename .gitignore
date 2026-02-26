@@ -1,0 +1,18 @@
+# Rust
+pc/mumu-remote/target/
+pc/mumu-remote/pairings.json
+
+# Android/Gradle
+android/.gradle/
+android/build/
+android/app/build/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*.log
+
+# Local secrets
+.env
+*.keystore
+*.jks

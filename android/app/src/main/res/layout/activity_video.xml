@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/video_surface"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitCenter"
+        android:background="#000000"
+        android:contentDescription="remote video" />
+
+    <TextView
+        android:id="@+id/status_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_margin="12dp"
+        android:background="#88000000"
+        android:padding="8dp"
+        android:textColor="#FFFFFF"
+        android:text="等待视频流..." />
+
+    <View
+        android:id="@+id/edge_handle"
+        android:layout_width="24dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="#10000000" />
+
+    <LinearLayout
+        android:id="@+id/side_nav"
+        android:layout_width="56dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|center_vertical"
+        android:orientation="vertical"
+        android:padding="6dp"
+        android:visibility="gone"
+        android:background="#66000000">
+
+        <Button
+            android:id="@+id/btn_back"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="返回" />
+
+        <Button
+            android:id="@+id/btn_home"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="主页" />
+
+        <Button
+            android:id="@+id/btn_recent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="多任务" />
+
+        <Button
+            android:id="@+id/btn_settings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="设置" />
+
+        <Button
+            android:id="@+id/btn_disconnect"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="断开" />
+    </LinearLayout>
+
+</FrameLayout>
